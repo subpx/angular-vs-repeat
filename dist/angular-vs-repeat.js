@@ -8,12 +8,37 @@ function _sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; 
 
 function _slicedToArray(arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return _sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }
 
+/* requestAnimationFrame - https://gist.github.com/paulirish/1579671 */
+(function () {
+  var lastTime = 0;
+  var vendors = ['ms', 'moz', 'webkit', 'o'];
+
+  for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+    window.requestAnimationFrame = window[vendors[x] + 'RequestAnimationFrame'];
+    window.cancelAnimationFrame = window[vendors[x] + 'CancelAnimationFrame'] || window[vendors[x] + 'CancelRequestAnimationFrame'];
+  }
+
+  if (!window.requestAnimationFrame) window.requestAnimationFrame = function (callback, element) {
+    var currTime = new Date().getTime();
+    var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+    var id = window.setTimeout(function () {
+      callback(currTime + timeToCall);
+    }, timeToCall);
+    lastTime = currTime + timeToCall;
+    return id;
+  };
+  if (!window.cancelAnimationFrame) window.cancelAnimationFrame = function (id) {
+    clearTimeout(id);
+  };
+})();
 /**
  * Copyright Kamil Pękala http://github.com/kamilkp
  * Angular Virtual Scroll Repeat v2.0.9 2018/04/02
  */
 
 /* global console, setTimeout, module */
+
+
 (function (window, angular) {
   /**
    * DESCRIPTION:
@@ -221,7 +246,7 @@ function _slicedToArray(arr, i) { if (Array.isArray(arr)) { return arr; } else i
 
         compileRepeatContainer.empty();
         return {
-          pre: function pre($scope, $element, $attrs) {
+          pre: function pre($scope, $element, $attrs, _controller, transclude) {
             var _$scope$$eval;
 
             function _parseSize(options) {
@@ -409,7 +434,9 @@ function _slicedToArray(arr, i) { if (Array.isArray(arr)) { return arr; } else i
             childClone.addClass('vs-repeat-repeated-element');
             repeatContainer.append($beforeContent);
             repeatContainer.append(childClone);
-            $compile(childClone)($scope);
+            $compile(childClone)($scope, null, {
+              parentBoundTranscludeFn: transclude
+            });
             repeatContainer.append($afterContent);
             $scope.vsRepeat.startIndex = 0;
             $scope.vsRepeat.endIndex = 0;
@@ -449,6 +476,9 @@ function _slicedToArray(arr, i) { if (Array.isArray(arr)) { return arr; } else i
               $scrollParent.off('scroll', scrollHandler);
             });
             $scope.$on('vsRepeatTrigger', refresh);
+            $scope.$on('vsScrollToItem', function (event, indexOfItem) {
+              $scrollParent[0].scrollTop = $scope.vsRepeat.sizesCumulative[indexOfItem];
+            });
             $scope.$on('vsRepeatResize', function () {
               autosizingRequired = true;
               getFromMeasured();
